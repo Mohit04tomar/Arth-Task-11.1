@@ -1,0 +1,86 @@
+- name: "Downloading and Installing JDK & Hadoop"
+  hosts: all
+  tasks:
+    - name: "Downloadiing JDK "
+      get_url:
+        url: "http://anfadmin.ucsd.edu/linux/RHEL/7/x86_64/jdk-8u171-linux-x64.rpm"
+        dest: "/root/jdk-8u171-linux_64.rpm"
+      become: yes
+
+    - name: "Installing JDK"
+      yum:
+        name: "/root/jdk-8u171-linux_64.rpm"
+        state: present
+      become: yes
+
+    - name: "Downloading Hadoop"
+      get_url:
+        url: "https://archive.apache.org/dist/hadoop/core/hadoop-1.2.1/hadoop-1.2.1-1.x86_64.rpm"
+        dest: "/root/hadoop-1.2.1-1.x86_64.rpm"
+      become: yes
+
+    - name: "Checking Hadoop is installed or not"
+      command: "ls /etc/hadoop/"
+      become: yes
+      ignore_errors: yes
+      register: x
+
+    - name: "Installing Hadoop"
+      command: "rpm -ivh /root/hadoop-1.2.1-1.x86_64.rpm --force"
+      become: yes
+      when: x.rc != 0
+
+- name: "Setting Up Master System"
+  hosts: mymaster
+  tasks:
+    - name: "Creating nnode directory for Master node"
+      file:
+        path: /nnode
+        state: directory
+      become: yes
+
+    - name: "Configuring HDFS File in Master"
+      copy:
+        src: '/ws2/hdfs-master.xml'
+        dest: '/etc/hadoop/hdfs-site.xml'
+      become: yes
+
+    - name: "Configuring Core-Site File in Master"
+      copy:
+        src: '/ws2/core-master.xml'
+        dest: '/etc/hadoop/core-site.xml'
+      become: yes
+      
+    - name: "formatting Name Node"
+      shell: "echo Y | hadoop namenode -format"
+      become: yes
+
+    - name: "Starting Name Node Services"
+      shell: 'hadoop-daemon.sh start namenode'
+      become: yes
+
+- name: "Setting Up Slave System"
+  hosts: myslave
+  tasks:
+    - name: "Creating dnode directory For Slave Node"
+      file:
+        path: '/dnode'
+        state: directory
+      become: yes
+
+    - name: "Conffiguring HDFS File in Slave"
+      copy:
+        src: '/ws2/hdfs-slave.xml'
+        dest: '/etc/hadoop/hdfs-site.xml'
+      become: yes
+
+    - name: "Configuring Core-Site File in Slave Node"
+      template:
+        src: '/ws2/core-slave.xml'
+        dest: '/etc/hadoop/core-site.xml'
+      become: yes
+
+
+    - name: "Starting Data Node"
+      shell: 'hadoop-daemon.sh start datanode'
+      become: yes
